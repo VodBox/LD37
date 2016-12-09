@@ -1,0 +1,61 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="cssReset.css">
+    <script src="phaser.min.js"></script>
+    <style>
+
+    </style>
+  </head>
+  <body>
+
+    <script>
+      var game = new Phaser.Game(1280, 720, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+
+      function preload() {
+        game.load.image('IDLogo', './insanedolllogo.png');
+      }
+
+      function create() {
+        logo = game.add.sprite(0, 0, 'IDLogo');
+        logo.age = 120;
+        leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
+        rightKey = game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
+        upKey = game.input.keyboard.addKey(Phaser.Keyboard.UP);
+        downKey = game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
+      }
+
+      var init = false;
+
+
+      function runSim() {
+        if(!init) {
+			
+          init = true;
+        }
+        iterate();
+      }
+	  
+	  function iterate() {
+	  
+	  }
+
+      var logoVisible = true;
+
+      function update() {
+        if(logoVisible) {
+          if(logo.age > -1) {
+            logo.age--;
+            if(logo.age < 31) {
+              logo.alpha = logo.age / 30;
+            }
+          } else if(logo.age == -1) {
+            logo = null;
+            logoVisible = false;
+          }
+        } else {
+          runSim();
+        }
+      }
+    </script>
+  </body>
+</html>
