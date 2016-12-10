@@ -20,7 +20,10 @@
         game.load.image('IDLogo', './insanedolllogo.png');
         game.load.image('Background', './background.png');
         game.load.image('Grid Overlay', './overlayGrid.png');
-        game.load.image('Basic Cube', './furniture/1x1x1/0/01.png');
+        game.load.image('Basic Cube 1', './furniture/1x1x1/0/0000.png');
+        game.load.image('Basic Cube 2', './furniture/1x1x1/0/0001.png');
+        game.load.image('Basic Cube 3', './furniture/1x1x1/0/0002.png');
+        game.load.image('Basic Cube 4', './furniture/1x1x1/0/0003.png');
       }
 
       function create() {
@@ -122,15 +125,14 @@
           gameObject.add(background);
           currentHover = drawBottomPiece(0,0);
           gameObject.add(currentHover);
-          interactiveObject = game.make.group();
           overlay = game.make.sprite(0, 0, 'Grid Overlay');
           overlay.height = height;
           overlay.width = height / 9 * 16;
           overlay.x = -(overlay.width - width) / 2;
-          interactiveObject.add(overlay);
           roomItems = game.make.group();
-          interactiveObject.add(roomItems);
-          gameObject.add(interactiveObject);
+          //gameObject.add(overlay);
+          gameObject.add(roomItems);
+          makeGrid();
           addBounds();
         }
         iterate();
@@ -227,7 +229,7 @@
             if(!coords[theX][theY][5]) {
               var item = spawnRandomItem(theX, theY, 5);
               if(placementValid(item, theX, theY, 5)) {
-                var object = game.make.sprite(0, 0, 'Basic Cube');
+                var object = game.make.sprite(0, 0, 'Basic Cube ' + Math.floor(Math.random() * 4 + 1));
                 var screenCoords = coordsToScreen(theX, theY);
                 object.x = screenCoords.x - xDifBottom;
                 object.y = screenCoords.y - (yDifBottom * 1.41 * 6);
@@ -245,27 +247,63 @@
         spawnCooldown--;
         if(gravityInterval == 0) {
           doGravity();
-          gravityInterval = 20;
+          gravityInterval = 3;
         }
         gravityInterval--;
         redrawObjects();
   	  }
 
+      function makeGrid() {
+        for(var x = 0; x < 6; ++x) {
+          for(var y = 0; y < 6; ++y) {
+            var pointStart = {
+              x: (width / 2) - (xDifBottom * x) + (xDifBottom * y),
+              y: yOffsetBottom - yDifBottom * ((12 - y) / 2) + yDifBottom * (x / 2)
+            };
+            var quad = game.make.graphics(0,0);
+            var pointsQuad = [];
+            pointsQuad[0] = {x: pointStart.x, y: pointStart.y};
+            pointsQuad[1] = {x: pointStart.x + xDifBottom, y: pointStart.y + (yDifBottom / 2)};
+            pointsQuad[2] = {x: pointStart.x, y: pointStart.y + yDifBottom};
+            pointsQuad[3] = {x: pointStart.x - xDifBottom, y: pointStart.y + (yDifBottom / 2)};
+            quad.beginFill(0x000000);
+            quad.lineStyle(5, 0xFFFFFF);
+            quad.moveTo(pointsQuad[0].x, pointsQuad[0].y);
+            quad.lineTo(pointsQuad[1].x, pointsQuad[1].y);
+            quad.lineTo(pointsQuad[2].x, pointsQuad[2].y);
+            quad.lineTo(pointsQuad[3].x, pointsQuad[3].y);
+            quad.lineTo(pointsQuad[0].x, pointsQuad[0].y);
+            quad.endFill();
+            quad.alpha = 0.6;
+            quad.gameX = x;
+            quad.gameY = y;
+            quad.z = x + y - currentZ;
+            quad.isGrid = true;
+            roomItems.add(quad);
+          }
+        }
+      }
+
       function redrawObjects() {
         for(var i = 0, l = roomItems.children.length; i < l; ++i) {
-          var drawZ = 0;
-          roomItems.children[i].prop.easedZ.shift();
-          roomItems.children[i].prop.easedZ.push(roomItems.children[i].prop.z);
-          for(var e = 0, o = roomItems.children[i].prop.easedZ.length; e < o; ++e) {
-            drawZ += roomItems.children[i].prop.easedZ[e] / o;
+          if(!roomItems.children[i].isGrid) {
+            var drawZ = 0;
+            roomItems.children[i].prop.easedZ.shift();
+            roomItems.children[i].prop.easedZ.push(roomItems.children[i].prop.z);
+            for(var e = 0, o = roomItems.children[i].prop.easedZ.length; e < o; ++e) {
+              drawZ += roomItems.children[i].prop.easedZ[e] / o;
+            }
+            var resultingCoords = coordsToScreen(roomItems.children[i].prop.x, roomItems.children[i].prop.y);
+            roomItems.children[i].x = resultingCoords.x - xDifBottom;
+            roomItems.children[i].y = resultingCoords.y - (yDifBottom * 1.41 * (1 + drawZ)) + (yDifBottom * 0.1);
+            roomItems.children[i].z = roomItems.children[i].prop.x + roomItems.children[i].prop.y - ((6 - roomItems.children[i].prop.z) / 20);
+            roomItems.children[i].tint = (14 * (3 + roomItems.children[i].prop.x + roomItems.children[i].prop.y + roomItems.children[i].prop.z)) * 65536
+                                        + (14 * (4 + roomItems.children[i].prop.x + roomItems.children[i].prop.y)) * 256
+                                        + (14 * (5 + roomItems.children[i].prop.x + roomItems.children[i].prop.y - roomItems.children[i].prop.z));
+          } else {
+            roomItems.children[i].z = roomItems.children[i].gameX + roomItems.children[i].gameY - ((6 - currentZ) / 19);
+            roomItems.children[i].y = -resultZ * yDifBottom * 1.41;
           }
-          var resultingCoords = coordsToScreen(roomItems.children[i].prop.x, roomItems.children[i].prop.y);
-          roomItems.children[i].x = resultingCoords.x - xDifBottom;
-          roomItems.children[i].y = resultingCoords.y - (yDifBottom * 1.41 * (1 + drawZ));
-          roomItems.children[i].z = roomItems.children[i].prop.x + roomItems.children[i].prop.y - ((6 - roomItems.children[i].prop.z) / 20);
-          roomItems.children[i].tint = (14 * (4 + roomItems.children[i].prop.x + roomItems.children[i].prop.y)) * 65536
-                                      + (14 * (4 + roomItems.children[i].prop.x + roomItems.children[i].prop.y)) * 256
-                                      + (14 * (4 + roomItems.children[i].prop.x + roomItems.children[i].prop.y));
         }
         roomItems.sort('z', Phaser.Group.SORT_ASCENDING);
       }
@@ -308,13 +346,15 @@
 
       function doGravity() {
         for(var i = 0, l = roomItems.children.length; i < l; ++i) {
-          var validDown = true;;
-          for(var cubes = 0, o = roomItems.children[i].prop.cubes.length; cubes < o; ++cubes) {
-            if(roomItems.children[i].prop.z > 0) {
-              if(placementValid(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z - 1)) {
-                modifyCoord(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z, false);
-                roomItems.children[i].prop.z -= 1;
-                modifyCoord(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z, true);
+          if(!roomItems.children[i].isGrid) {
+            var validDown = true;
+            for(var cubes = 0, o = roomItems.children[i].prop.cubes.length; cubes < o; ++cubes) {
+              if(roomItems.children[i].prop.z > 0) {
+                if(placementValid(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z - 1)) {
+                  modifyCoord(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z, false);
+                  roomItems.children[i].prop.z -= 1;
+                  modifyCoord(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z, true);
+                }
               }
             }
           }
