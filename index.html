@@ -20,7 +20,7 @@
         game.load.image('IDLogo', './insanedolllogo.png');
         game.load.image('Background', './background.png');
         game.load.image('Grid Overlay', './overlayGrid.png');
-        game.load.image('Basic Cube', './basicCube.png');
+        game.load.image('Basic Cube', './furniture/1x1x1/0/01.png');
       }
 
       function create() {
@@ -43,9 +43,9 @@
       function initCoords() {
         for(var x = 0; x < 6; ++x) {
           coords[x] = [];
-          for(var y = 6; y < 6; ++y) {
+          for(var y = 0; y < 6; ++y) {
             coords[x][y] = [];
-            for(var z = 6; z < 6; ++z) {
+            for(var z = 0; z < 6; ++z) {
               coords[x][y][z] = false;
             }
           }
@@ -53,6 +53,13 @@
       }
 
       var padding = 0.15;
+
+      function coordsToScreen(x, y) {
+        return {
+          x: (width / 2) - (xDifBottom * x) + (xDifBottom * y),
+          y: yOffsetBottom - yDifBottom * ((12 - y) / 2) + yDifBottom * (x / 2)
+        };
+      }
 
       function drawBottomPiece(x,y) {
         var piece = game.add.group();
@@ -105,6 +112,7 @@
       function runSim() {
         if(!init) {
           init = true;
+          initCoords();
           gameObject = game.add.group();
           background.destroy();
           background = game.make.sprite(0, 0, 'Background');
@@ -114,10 +122,15 @@
           gameObject.add(background);
           currentHover = drawBottomPiece(0,0);
           gameObject.add(currentHover);
-          overlay = game.add.sprite(0, 0, 'Grid Overlay');
+          interactiveObject = game.make.group();
+          overlay = game.make.sprite(0, 0, 'Grid Overlay');
           overlay.height = height;
           overlay.width = height / 9 * 16;
           overlay.x = -(overlay.width - width) / 2;
+          interactiveObject.add(overlay);
+          roomItems = game.make.group();
+          interactiveObject.add(roomItems);
+          gameObject.add(interactiveObject);
           addBounds();
         }
         iterate();
@@ -171,6 +184,10 @@
 
       var clicked = false;
 
+      var spawnCooldown = 300;
+
+      var gravityInterval = 60;
+
   	  function iterate() {
         if(game.input.activePointer.leftButton.isDown) {
           clicked = true;
@@ -198,8 +215,111 @@
           resultZ += easedZ[i] / l;
         }
         gameObject.y = resultZ * yDifBottom * 1.41;
+        overlay.y = -resultZ * yDifBottom * 1.41;
         cooldown--;
+        if(spawnCooldown == 0) {
+          var valid = false;
+          while(!valid) {
+            var theX = Math.floor(Math.random() * 6);
+            var theY = Math.floor(Math.random() * 6);
+            console.log(theX);
+            console.log(theY);
+            if(!coords[theX][theY][5]) {
+              var item = spawnRandomItem(theX, theY, 5);
+              if(placementValid(item, theX, theY, 5)) {
+                var object = game.make.sprite(0, 0, 'Basic Cube');
+                var screenCoords = coordsToScreen(theX, theY);
+                object.x = screenCoords.x - xDifBottom;
+                object.y = screenCoords.y - (yDifBottom * 1.41 * 6);
+                object.width = xDifBottom * 2;
+                object.height = xDifBottom * 2;
+                object.prop = item;
+                roomItems.add(object);
+                modifyCoord(item, theX, theY, 5, true);
+                valid = true;
+              }
+            }
+          }
+          spawnCooldown = 10;
+        }
+        spawnCooldown--;
+        if(gravityInterval == 0) {
+          doGravity();
+          gravityInterval = 20;
+        }
+        gravityInterval--;
+        redrawObjects();
   	  }
+
+      function redrawObjects() {
+        for(var i = 0, l = roomItems.children.length; i < l; ++i) {
+          var drawZ = 0;
+          roomItems.children[i].prop.easedZ.shift();
+          roomItems.children[i].prop.easedZ.push(roomItems.children[i].prop.z);
+          for(var e = 0, o = roomItems.children[i].prop.easedZ.length; e < o; ++e) {
+            drawZ += roomItems.children[i].prop.easedZ[e] / o;
+          }
+          var resultingCoords = coordsToScreen(roomItems.children[i].prop.x, roomItems.children[i].prop.y);
+          roomItems.children[i].x = resultingCoords.x - xDifBottom;
+          roomItems.children[i].y = resultingCoords.y - (yDifBottom * 1.41 * (1 + drawZ));
+          roomItems.children[i].z = roomItems.children[i].prop.x + roomItems.children[i].prop.y - ((6 - roomItems.children[i].prop.z) / 20);
+          roomItems.children[i].tint = (14 * (4 + roomItems.children[i].prop.x + roomItems.children[i].prop.y)) * 65536
+                                      + (14 * (4 + roomItems.children[i].prop.x + roomItems.children[i].prop.y)) * 256
+                                      + (14 * (4 + roomItems.children[i].prop.x + roomItems.children[i].prop.y));
+        }
+        roomItems.sort('z', Phaser.Group.SORT_ASCENDING);
+      }
+
+      function modifyCoord(item, x, y, z, bool) {
+        for(var cube = 0, l = item.cubes.length; cube < l; ++cube) {
+          coords[x + item.cubes[cube].x][y + item.cubes[cube].y][z + item.cubes[cube].z] = bool;
+        }
+      }
+
+      function placementValid(item, x, y, z) {
+        for(var cube = 0, l = item.cubes.length; cube < l; ++cube) {
+          if(x + item.cubes[cube].x < 6 && x + item.cubes[cube].x > -1
+          && y + item.cubes[cube].y < 6 && y + item.cubes[cube].y > -1
+          && z + item.cubes[cube].z < 6 && z + item.cubes[cube].z > -1) {
+            if(coords[x + item.cubes[cube].x][y + item.cubes[cube].y][z + item.cubes[cube].z]) {
+              return false;
+            }
+          } else {
+            return false;
+          }
+        }
+        return true;
+      }
+
+      function spawnRandomItem(x, y, z) {
+        var o = roomItems.length;
+        var properties = {
+          cubes: [
+            {x: 0, y: 0, z: 0}//,
+            //{x: 1, y: 0, z: 0}
+          ],
+          x: x,
+          y: y,
+          z: z,
+          easedZ: [z,z,z,z,z]
+        };
+        return properties;
+      }
+
+      function doGravity() {
+        for(var i = 0, l = roomItems.children.length; i < l; ++i) {
+          var validDown = true;;
+          for(var cubes = 0, o = roomItems.children[i].prop.cubes.length; cubes < o; ++cubes) {
+            if(roomItems.children[i].prop.z > 0) {
+              if(placementValid(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z - 1)) {
+                modifyCoord(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z, false);
+                roomItems.children[i].prop.z -= 1;
+                modifyCoord(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z, true);
+              }
+            }
+          }
+        }
+      }
 
       var logoVisible = true;
 
