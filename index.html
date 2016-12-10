@@ -154,7 +154,10 @@
         }
       }
 
+      var slatedForDelete = [];
+
       function checkBounds(mouseX, mouseY) {
+        slatedForDelete = [];
         for(var x = 0; x < 6; ++x) {
           for(var y = 0; y < 6; ++y) {
             if(mouseX > bounds[x][y].x - xDifBottom
@@ -173,6 +176,9 @@
                   currentHover.destroy();
                 }
                 currentHover = drawBottomPiece(x,y);
+                if(clicked) {
+                  slatedForDelete[0] = [x, y, currentZ];
+                }
                 return [x, y];
               }
             }
@@ -236,10 +242,10 @@
               if(placementValid(item, theX, theY, 5, false)) {
                 var object = game.make.sprite(0, 0, item.sprite);
                 var screenCoords = coordsToScreen(theX, theY);
-                object.x = screenCoords.x - (xDifBottom * 1 * (item.width + item.closestX));
-                object.y = screenCoords.y - (yDifBottom * 1.41 * 6 * (item.height + item.closestY));
-                object.width = xDifBottom * 2 * Math.pow(item.width, 1/1.5);
-                object.height = xDifBottom * 2 * Math.pow(item.height, 1/1.5);
+                object.x = screenCoords.x - (xDifBottom * 1 * item.width);
+                object.y = screenCoords.y - (yDifBottom * 1.41 * 6 * item.height);
+                object.width = xDifBottom * 2 * item.width;
+                object.height = xDifBottom * 2 * item.height;
                 object.prop = item;
                 roomItems.add(object);
                 modifyCoord(item, theX, theY, 5, true);
@@ -251,12 +257,12 @@
               valid = true;
             }
           }
-          spawnCooldown = 10;
+          spawnCooldown = 60;
         }
         spawnCooldown--;
         if(gravityInterval == 0) {
           doGravity();
-          gravityInterval = 3;
+          gravityInterval = 40;
         }
         gravityInterval--;
         redrawObjects();
@@ -288,6 +294,7 @@
             quad.gameY = y;
             quad.z = x + y - currentZ;
             quad.isGrid = true;
+            quad.prop = {};
             roomItems.add(quad);
           }
         }
@@ -295,25 +302,34 @@
 
       function redrawObjects() {
         for(var i = 0, l = roomItems.children.length; i < l; ++i) {
-          if(!roomItems.children[i].isGrid) {
-            var drawZ = 0;
-            roomItems.children[i].prop.easedZ.shift();
-            roomItems.children[i].prop.easedZ.push(roomItems.children[i].prop.z);
-            for(var e = 0, o = roomItems.children[i].prop.easedZ.length; e < o; ++e) {
-              drawZ += roomItems.children[i].prop.easedZ[e] / o;
+          if(roomItems.children[i] !== undefined) {
+            if(slatedForDelete.length > 0 && roomItems.children[i].isGrid === undefined) {
+              if(roomItems.children[i].prop.x == slatedForDelete[0][0]
+              && roomItems.children[i].prop.y == slatedForDelete[0][1]
+              && roomItems.children[i].prop.z == slatedForDelete[0][2]) {
+                modifyCoord(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z, false);
+                roomItems.children[i].destroy();
+                return;
+              }
             }
-            var resultingCoords = coordsToScreen(roomItems.children[i].prop.x, roomItems.children[i].prop.y);
-            roomItems.children[i].x = resultingCoords.x - xDifBottom;
-            roomItems.children[i].y = resultingCoords.y - (yDifBottom * 1.41 * (1 + drawZ)) + (yDifBottom * 0.1);
-            roomItems.children[i].z = (roomItems.children[i].prop.x * 1.01 + (roomItems.children[i].prop.closestX * 0.5))
-                                    + roomItems.children[i].prop.y + (roomItems.children[i].prop.closestY * 0.5)
-                                    - ((6 - roomItems.children[i].prop.z) / 20);
-            roomItems.children[i].tint = (14 * (3 + roomItems.children[i].prop.x + roomItems.children[i].prop.y + roomItems.children[i].prop.z)) * 65536
-                                        + (14 * (4 + roomItems.children[i].prop.x + roomItems.children[i].prop.y)) * 256
-                                        + (14 * (5 + roomItems.children[i].prop.x + roomItems.children[i].prop.y - roomItems.children[i].prop.z));
-          } else {
-            roomItems.children[i].z = roomItems.children[i].gameX + roomItems.children[i].gameY - ((6 - currentZ) / 19);
-            roomItems.children[i].y = -resultZ * yDifBottom * 1.41;
+            if(!roomItems.children[i].isGrid) {
+              var drawZ = 0;
+              roomItems.children[i].prop.easedZ.shift();
+              roomItems.children[i].prop.easedZ.push(roomItems.children[i].prop.z);
+              for(var e = 0, o = roomItems.children[i].prop.easedZ.length; e < o; ++e) {
+                drawZ += roomItems.children[i].prop.easedZ[e] / o;
+              }
+              var resultingCoords = coordsToScreen(roomItems.children[i].prop.x, roomItems.children[i].prop.y);
+              roomItems.children[i].x = resultingCoords.x - xDifBottom;
+              roomItems.children[i].y = resultingCoords.y - (yDifBottom * 1.41 * (1 + drawZ)) + (yDifBottom * 0.1);
+              roomItems.children[i].z = roomItems.children[i].prop.x + roomItems.children[i].prop.y - ((6 - roomItems.children[i].prop.z) / 20);;
+              roomItems.children[i].tint = (14 * (3 + roomItems.children[i].prop.x + roomItems.children[i].prop.y + roomItems.children[i].prop.z)) * 65536
+                                          + (14 * (4 + roomItems.children[i].prop.x + roomItems.children[i].prop.y)) * 256
+                                          + (14 * (5 + roomItems.children[i].prop.x + roomItems.children[i].prop.y - roomItems.children[i].prop.z));
+            } else {
+              roomItems.children[i].z = roomItems.children[i].gameX + roomItems.children[i].gameY - ((6 - currentZ) / 19);
+              roomItems.children[i].y = -resultZ * yDifBottom * 1.41;
+            }
           }
         }
         roomItems.sort('z', Phaser.Group.SORT_ASCENDING);
@@ -351,8 +367,6 @@
             {x: 0, y: 0, z: 0}//,
             //{x: 1, y: 0, z: 0}
           ],
-          closestX: 0,
-          closestY: 0,
           sprite_prefix: 'Basic Cube ',
           possible_suffixes: [
             '1', '2', '3', '4'
@@ -360,34 +374,6 @@
           width: 1,
           height: 1,
         },
-        {
-          cubes: [
-            {x: 0, y: 0, z: 0},
-            {x: 1, y: 0, z: 0}
-          ],
-          closestX: 1,
-          closestY: 0,
-          sprite_prefix: 'Wider Table ',
-          possible_suffixes: [
-            '1', '3'
-          ],
-          width: 1.5,
-          height: 1.5,
-        },
-        {
-          cubes: [
-            {x: 0, y: 0, z: 0},
-            {x: 0, y: 1, z: 0}
-          ],
-          closestX: 0,
-          closestY: 1,
-          sprite_prefix: 'Wider Table ',
-          possible_suffixes: [
-            '2', '4'
-          ],
-          width: 1.5,
-          height: 1.5,
-        }
       ];
 
       function spawnRandomItem(x, y, z) {
