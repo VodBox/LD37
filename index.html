@@ -19,17 +19,21 @@
       function preload() {
         game.load.image('IDLogo', './insanedolllogo.png');
         game.load.image('Background', './background.png');
+        game.load.image('Grid Overlay', './overlayGrid.png');
+        game.load.image('Basic Cube', './basicCube.png');
       }
 
       function create() {
+        game.input.mouse.capture = true;
+        game.stage.backgroundColor = "#0077AA";
         background = game.add.sprite(0, 0, 'Background');
         background.height = height;
         background.width = height / 9 * 16;
         background.x = -(background.width - width) / 2;
         logo = game.add.sprite(0, 0, 'IDLogo');
         logo.age = 120;
-        leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
-        rightKey = game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
+        //leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
+        //rightKey = game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
         upKey = game.input.keyboard.addKey(Phaser.Keyboard.UP);
         downKey = game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
       }
@@ -37,32 +41,66 @@
       var coords = [];
 
       function initCoords() {
-
+        for(var x = 0; x < 6; ++x) {
+          coords[x] = [];
+          for(var y = 6; y < 6; ++y) {
+            coords[x][y] = [];
+            for(var z = 6; z < 6; ++z) {
+              coords[x][y][z] = false;
+            }
+          }
+        }
       }
 
-      function checkFilled(x, y, z) {
-        return
-      }
+      var padding = 0.15;
 
       function drawBottomPiece(x,y) {
-        var quad = game.make.graphics(0,0);
-        quad.beginFill(0xFF0000);
+        var piece = game.add.group();
+
         var pointStart = {
           x: (width / 2) - (xDifBottom * x) + (xDifBottom * y),
           y: yOffsetBottom - yDifBottom * ((12 - y) / 2) + yDifBottom * (x / 2)
         };
-        var points = [];
-        points[0] = {x: pointStart.x, y: pointStart.y};
-        points[1] = {x: pointStart.x + xDifBottom, y: pointStart.y + (yDifBottom / 2)};
-        points[2] = {x: pointStart.x, y: pointStart.y + yDifBottom};
-        points[3] = {x: pointStart.x - xDifBottom, y: pointStart.y + (yDifBottom / 2)};
-        quad.drawPolygon(points);
+
+        var quad = game.make.graphics(0,0);
+        if(clicked) {
+          quad.beginFill(0xCC5555);
+        } else {
+          quad.beginFill(0x55CCFF);
+        }
+        var pointsQuad = [];
+        pointsQuad[0] = {x: pointStart.x, y: pointStart.y};
+        pointsQuad[1] = {x: pointStart.x + xDifBottom, y: pointStart.y + (yDifBottom / 2)};
+        pointsQuad[2] = {x: pointStart.x, y: pointStart.y + yDifBottom};
+        pointsQuad[3] = {x: pointStart.x - xDifBottom, y: pointStart.y + (yDifBottom / 2)};
+        quad.drawPolygon(pointsQuad);
         quad.endFill();
-        quad.alpha = 0.5;
-        return quad;
+        quad.alpha = 0.6;
+        piece.add(quad);
+
+        var padded = game.make.graphics(0,0);
+        if(clicked) {
+          padded.beginFill(0xFF5555);
+        } else {
+          padded.beginFill(0x0099FF);
+        }
+        var points = [];
+        points[0] = {x: pointStart.x, y: pointStart.y + (yDifBottom * padding)};
+        points[1] = {x: pointStart.x + (xDifBottom * (1 - (padding * 2))), y: pointStart.y + (yDifBottom / 2)};
+        points[2] = {x: pointStart.x, y: pointStart.y + yDifBottom - (yDifBottom * padding)};
+        points[3] = {x: pointStart.x - (xDifBottom * (1 - (padding * 2))), y: pointStart.y + (yDifBottom / 2)};
+        padded.drawPolygon(points);
+        padded.endFill();
+        padded.alpha = 0.3;
+        piece.add(padded);
+
+        piece.alpha = 0.5;
+
+        return piece;
       }
 
       var init = false;
+      var bounds = [];
 
       function runSim() {
         if(!init) {
@@ -76,13 +114,92 @@
           gameObject.add(background);
           currentHover = drawBottomPiece(0,0);
           gameObject.add(currentHover);
+          overlay = game.add.sprite(0, 0, 'Grid Overlay');
+          overlay.height = height;
+          overlay.width = height / 9 * 16;
+          overlay.x = -(overlay.width - width) / 2;
+          addBounds();
         }
         iterate();
       }
 
-	  function iterate() {
+      function addBounds() {
+        for(var x = 0; x < 6; ++x) {
+          bounds[x] = [];
+          for(var y = 0; y < 6; ++y) {
+            bounds[x][y] = {
+              x: (width / 2) - (xDifBottom * x) + (xDifBottom * y),
+              y: yOffsetBottom - yDifBottom * ((12 - y) / 2) + yDifBottom * (x / 2)
+            }
+          }
+        }
+      }
 
-	  }
+      function checkBounds(mouseX, mouseY) {
+        for(var x = 0; x < 6; ++x) {
+          for(var y = 0; y < 6; ++y) {
+            if(mouseX > bounds[x][y].x - xDifBottom
+            && mouseX < bounds[x][y].x + xDifBottom
+            && mouseY > bounds[x][y].y
+            && mouseY < bounds[x][y].y + yDifBottom) {
+              var dx = mouseX - bounds[x][y].x + xDifBottom;
+              if(dx > xDifBottom) {
+                dx = Math.abs(bounds[x][y].x + xDifBottom - mouseX);
+              }
+              dx = (dx / xDifBottom) / 2;
+              console.log(dx);
+              if(mouseY > bounds[x][y].y + (yDifBottom * (0.5 - dx))
+              && mouseY < bounds[x][y].y + yDifBottom - (yDifBottom * (0.5 - dx))) {
+                if(currentHover) {
+                  currentHover.destroy();
+                }
+                currentHover = drawBottomPiece(x,y);
+                return [x, y];
+              }
+            }
+          }
+        }
+        if(currentHover) {
+          currentHover.destroy();
+        }
+      }
+
+      var currentZ = 0;
+      var easedZ = [0,0,0,0,0,0,0];
+      var cooldown = 20;
+      var cooldownTime = 8;
+
+      var clicked = false;
+
+  	  function iterate() {
+        if(game.input.activePointer.leftButton.isDown) {
+          clicked = true;
+        } else {
+          clicked = false;
+        }
+        gameCoords = checkBounds(game.input.mousePointer.x, game.input.mousePointer.y);
+        if(upKey.isDown && cooldown < 0) {
+          currentZ += 1;
+          cooldown = cooldownTime;
+        }
+        if(downKey.isDown && cooldown < 0) {
+          currentZ -= 1;
+          cooldown = cooldownTime;
+        }
+        if(currentZ > 5) {
+          currentZ = 5;
+        } else if(currentZ < 0) {
+          currentZ = 0;
+        }
+        easedZ.shift();
+        easedZ.push(currentZ);
+        resultZ = 0;
+        for(var i = 0, l = easedZ.length; i < l; ++i) {
+          resultZ += easedZ[i] / l;
+        }
+        gameObject.y = resultZ * yDifBottom * 1.41;
+        cooldown--;
+  	  }
 
       var logoVisible = true;
 
