@@ -1,0 +1,106 @@
+<html>
+  <head>
+    <link rel="stylesheet" href="cssReset.css">
+    <script src="phaser.min.js"></script>
+    <style>
+
+    </style>
+  </head>
+  <body>
+
+    <script>
+      var width = window.innerWidth;
+      var height = window.innerHeight;
+      var yDifBottom = 0.06 * height;
+      var xDifBottom = yDifBottom * 1.119;
+      var yOffsetBottom = 0.932 * height;
+      var game = new Phaser.Game(width, height, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+
+      function preload() {
+        game.load.image('IDLogo', './insanedolllogo.png');
+        game.load.image('Background', './background.png');
+      }
+
+      function create() {
+        background = game.add.sprite(0, 0, 'Background');
+        background.height = height;
+        background.width = height / 9 * 16;
+        background.x = -(background.width - width) / 2;
+        logo = game.add.sprite(0, 0, 'IDLogo');
+        logo.age = 120;
+        leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
+        rightKey = game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
+        upKey = game.input.keyboard.addKey(Phaser.Keyboard.UP);
+        downKey = game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
+      }
+
+      var coords = [];
+
+      function initCoords() {
+
+      }
+
+      function checkFilled(x, y, z) {
+        return
+      }
+
+      function drawBottomPiece(x,y) {
+        var quad = game.make.graphics(0,0);
+        quad.beginFill(0xFF0000);
+        var pointStart = {
+          x: (width / 2) - (xDifBottom * x) + (xDifBottom * y),
+          y: yOffsetBottom - yDifBottom * ((12 - y) / 2) + yDifBottom * (x / 2)
+        };
+        var points = [];
+        points[0] = {x: pointStart.x, y: pointStart.y};
+        points[1] = {x: pointStart.x + xDifBottom, y: pointStart.y + (yDifBottom / 2)};
+        points[2] = {x: pointStart.x, y: pointStart.y + yDifBottom};
+        points[3] = {x: pointStart.x - xDifBottom, y: pointStart.y + (yDifBottom / 2)};
+        quad.drawPolygon(points);
+        quad.endFill();
+        quad.alpha = 0.5;
+        return quad;
+      }
+
+      var init = false;
+
+      function runSim() {
+        if(!init) {
+          init = true;
+          gameObject = game.add.group();
+          background.destroy();
+          background = game.make.sprite(0, 0, 'Background');
+          background.height = height;
+          background.width = height / 9 * 16;
+          background.x = -(background.width - width) / 2;
+          gameObject.add(background);
+          currentHover = drawBottomPiece(0,0);
+          gameObject.add(currentHover);
+        }
+        iterate();
+      }
+
+	  function iterate() {
+
+	  }
+
+      var logoVisible = true;
+
+      function update() {
+        if(logoVisible) {
+          if(logo.age > -1) {
+            logo.age--;
+            if(logo.age < 31) {
+              logo.alpha = logo.age / 30;
+            }
+          } else if(logo.age == -1) {
+            logo = null;
+            logoVisible = false;
+          }
+        } else {
+          runSim();
+        }
+      }
+    </script>
+  </body>
+</html>
