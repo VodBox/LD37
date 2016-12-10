@@ -24,6 +24,10 @@
         game.load.image('Basic Cube 2', './furniture/1x1x1/0/0001.png');
         game.load.image('Basic Cube 3', './furniture/1x1x1/0/0002.png');
         game.load.image('Basic Cube 4', './furniture/1x1x1/0/0003.png');
+        game.load.image('Wider Table 1', './furniture/2x1x1/1/0000.png');
+        game.load.image('Wider Table 2', './furniture/1x2x1/1/0001.png');
+        game.load.image('Wider Table 3', './furniture/2x1x1/1/0002.png');
+        game.load.image('Wider Table 4', './furniture/1x2x1/1/0003.png');
       }
 
       function create() {
@@ -221,6 +225,7 @@
         cooldown--;
         if(spawnCooldown == 0) {
           var valid = false;
+          var attempts = 20;
           while(!valid) {
             var theX = Math.floor(Math.random() * 6);
             var theY = Math.floor(Math.random() * 6);
@@ -228,18 +233,22 @@
             console.log(theY);
             if(!coords[theX][theY][5]) {
               var item = spawnRandomItem(theX, theY, 5);
-              if(placementValid(item, theX, theY, 5)) {
-                var object = game.make.sprite(0, 0, 'Basic Cube ' + Math.floor(Math.random() * 4 + 1));
+              if(placementValid(item, theX, theY, 5, false)) {
+                var object = game.make.sprite(0, 0, item.sprite);
                 var screenCoords = coordsToScreen(theX, theY);
-                object.x = screenCoords.x - xDifBottom;
-                object.y = screenCoords.y - (yDifBottom * 1.41 * 6);
-                object.width = xDifBottom * 2;
-                object.height = xDifBottom * 2;
+                object.x = screenCoords.x - (xDifBottom * 1 * (item.width + item.closestX));
+                object.y = screenCoords.y - (yDifBottom * 1.41 * 6 * (item.height + item.closestY));
+                object.width = xDifBottom * 2 * Math.pow(item.width, 1/1.5);
+                object.height = xDifBottom * 2 * Math.pow(item.height, 1/1.5);
                 object.prop = item;
                 roomItems.add(object);
                 modifyCoord(item, theX, theY, 5, true);
                 valid = true;
               }
+            }
+            attempts--;
+            if(attempts == 0) {
+              valid = true;
             }
           }
           spawnCooldown = 10;
@@ -296,7 +305,9 @@
             var resultingCoords = coordsToScreen(roomItems.children[i].prop.x, roomItems.children[i].prop.y);
             roomItems.children[i].x = resultingCoords.x - xDifBottom;
             roomItems.children[i].y = resultingCoords.y - (yDifBottom * 1.41 * (1 + drawZ)) + (yDifBottom * 0.1);
-            roomItems.children[i].z = roomItems.children[i].prop.x + roomItems.children[i].prop.y - ((6 - roomItems.children[i].prop.z) / 20);
+            roomItems.children[i].z = (roomItems.children[i].prop.x * 1.01 + (roomItems.children[i].prop.closestX * 0.5))
+                                    + roomItems.children[i].prop.y + (roomItems.children[i].prop.closestY * 0.5)
+                                    - ((6 - roomItems.children[i].prop.z) / 20);
             roomItems.children[i].tint = (14 * (3 + roomItems.children[i].prop.x + roomItems.children[i].prop.y + roomItems.children[i].prop.z)) * 65536
                                         + (14 * (4 + roomItems.children[i].prop.x + roomItems.children[i].prop.y)) * 256
                                         + (14 * (5 + roomItems.children[i].prop.x + roomItems.children[i].prop.y - roomItems.children[i].prop.z));
@@ -310,16 +321,21 @@
 
       function modifyCoord(item, x, y, z, bool) {
         for(var cube = 0, l = item.cubes.length; cube < l; ++cube) {
-          coords[x + item.cubes[cube].x][y + item.cubes[cube].y][z + item.cubes[cube].z] = bool;
+          coords[x + item.cubes[cube].x][y + item.cubes[cube].y][z - item.cubes[cube].z] = bool;
         }
       }
 
-      function placementValid(item, x, y, z) {
+      function placementValid(item, x, y, z, alreadyPlaced) {
+        coordsOfSelf = {};
+        for(var cube = 0, l = item.cubes.length; cube < l && alreadyPlaced; ++cube) {
+          coordsOfSelf[(item.x + item.cubes[cube].x) + '-' + (item.y + item.cubes[cube].y) + '-' + (item.z - item.cubes[cube].z)] = true;
+        }
         for(var cube = 0, l = item.cubes.length; cube < l; ++cube) {
           if(x + item.cubes[cube].x < 6 && x + item.cubes[cube].x > -1
           && y + item.cubes[cube].y < 6 && y + item.cubes[cube].y > -1
           && z + item.cubes[cube].z < 6 && z + item.cubes[cube].z > -1) {
-            if(coords[x + item.cubes[cube].x][y + item.cubes[cube].y][z + item.cubes[cube].z]) {
+            if(!coordsOfSelf[(x + item.cubes[cube].x) + '-' + (y + item.cubes[cube].y) + '-' + (z - item.cubes[cube].z)]
+            && coords[x + item.cubes[cube].x][y + item.cubes[cube].y][z - item.cubes[cube].z]) {
               return false;
             }
           } else {
@@ -329,19 +345,79 @@
         return true;
       }
 
-      function spawnRandomItem(x, y, z) {
-        var o = roomItems.length;
-        var properties = {
+      var itemOptions = [
+        {
           cubes: [
             {x: 0, y: 0, z: 0}//,
             //{x: 1, y: 0, z: 0}
           ],
-          x: x,
-          y: y,
-          z: z,
-          easedZ: [z,z,z,z,z]
-        };
-        return properties;
+          closestX: 0,
+          closestY: 0,
+          sprite_prefix: 'Basic Cube ',
+          possible_suffixes: [
+            '1', '2', '3', '4'
+          ],
+          width: 1,
+          height: 1,
+        },
+        {
+          cubes: [
+            {x: 0, y: 0, z: 0},
+            {x: 1, y: 0, z: 0}
+          ],
+          closestX: 1,
+          closestY: 0,
+          sprite_prefix: 'Wider Table ',
+          possible_suffixes: [
+            '1', '3'
+          ],
+          width: 1.5,
+          height: 1.5,
+        },
+        {
+          cubes: [
+            {x: 0, y: 0, z: 0},
+            {x: 0, y: 1, z: 0}
+          ],
+          closestX: 0,
+          closestY: 1,
+          sprite_prefix: 'Wider Table ',
+          possible_suffixes: [
+            '2', '4'
+          ],
+          width: 1.5,
+          height: 1.5,
+        }
+      ];
+
+      function spawnRandomItem(x, y, z) {
+        var o = roomItems.length;
+        if(Math.random() < 1) {
+          var preset = itemOptions[Math.floor(itemOptions.length * Math.random())];
+          var properties = {
+            x: x,
+            y: y,
+            z: z,
+            sprite: preset.sprite_prefix + preset.possible_suffixes[Math.floor(preset.possible_suffixes.length * Math.random())],
+            easedZ: [z,z,z,z,z]
+          };
+          Object.assign(properties, preset);
+          return properties;
+        } else {
+          var properties = {
+            cubes: [
+              {x: 0, y: 0, z: 0},
+              {x: 1, y: 0, z: 0},
+              {x: 0, y: 1, z: 0}
+            ],
+            x: x,
+            y: y,
+            z: z,
+            sprite: 'Basic Cube ' + Math.floor(Math.random() * 4 + 1),
+            easedZ: [z,z,z,z,z]
+          };
+          return properties;
+        }
       }
 
       function doGravity() {
@@ -350,7 +426,7 @@
             var validDown = true;
             for(var cubes = 0, o = roomItems.children[i].prop.cubes.length; cubes < o; ++cubes) {
               if(roomItems.children[i].prop.z > 0) {
-                if(placementValid(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z - 1)) {
+                if(placementValid(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z - 1, true)) {
                   modifyCoord(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z, false);
                   roomItems.children[i].prop.z -= 1;
                   modifyCoord(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z, true);
