@@ -73,11 +73,18 @@
         background.width = height / 9 * 16;
         background.x = -(background.width - width) / 2;
         logo = game.add.sprite(0, 0, 'IDLogo');
+        logo.height = height;
+        logo.width = height / 9 * 16;
+        logo.x = -(logo.width - width) / 2;
         logo.age = 120;
         leftKey = game.input.keyboard.addKey(Phaser.Keyboard.LEFT);
         rightKey = game.input.keyboard.addKey(Phaser.Keyboard.RIGHT);
         upKey = game.input.keyboard.addKey(Phaser.Keyboard.UP);
         downKey = game.input.keyboard.addKey(Phaser.Keyboard.DOWN);
+        aKey = game.input.keyboard.addKey(Phaser.Keyboard.A);
+        dKey = game.input.keyboard.addKey(Phaser.Keyboard.D);
+        wKey = game.input.keyboard.addKey(Phaser.Keyboard.W);
+        sKey = game.input.keyboard.addKey(Phaser.Keyboard.S);
       }
 
       var coords = [];
@@ -155,6 +162,9 @@
 
       var cursorCooldown = 5;
 
+      var score = 0;
+      var timeRemaining = 60 * 60 * 2;
+
       function runSim() {
         if(!init) {
           init = true;
@@ -162,7 +172,12 @@
             gameObject.destroy();
             isObjectHeld = false;
             heldObject = {};
+            scoreDisplay.destroy();
+            timeDisplay.destroy();
+            heldGraphic.destroy();
           }
+          timeRemaining = 60 * 60 * 2;
+          score = 0;
           initCoords();
           gameObject = game.add.group();
           background.destroy();
@@ -177,9 +192,24 @@
           overlay.height = height;
           overlay.width = height / 9 * 16;
           overlay.x = -(overlay.width - width) / 2;
+          heldGraphic = game.add.group();
+          heldGraphic.x = width * 0.01;
+          heldGraphic.y = width * 0.01;
           roomItems = game.make.group();
           //gameObject.add(overlay);
           gameObject.add(roomItems);
+          scoreDisplay = game.add.text(0,0, 'Score: 0', {
+            fill: "#FFFFFF",
+            boundsAlignH: 'right',
+            boundsAlignV: 'middle'
+          });
+          scoreDisplay.setTextBounds(width * 0.02, height * 0.02, width * 0.96, 0.02 * height);
+          timeDisplay = game.add.text(0,0, '2:00', {
+            fill: "#FFFFFF",
+            boundsAlignH: 'center',
+            boundsAlignV: 'middle'
+          });
+          timeDisplay.setTextBounds(width * 0.02, height * 0.02, width * 0.96, 0.02 * height);
           makeGrid();
           addBounds();
         }
@@ -245,6 +275,10 @@
                       modifyCoord(heldObject, x, y, currentZ + zOffset, true);
                       isObjectHeld = false;
                       heldObject = {};
+                      heldGraphic.destroy();
+                      heldGraphic = game.add.group();
+                      heldGraphic.x = width * 0.01;
+                      heldGraphic.y = width * 0.01;
                     }
                   } else {
                     slatedForDelete[0] = [x, y, currentZ];
@@ -267,12 +301,24 @@
 
       var clicked = false;
 
-      var spawnCooldown = 300;
+      var spawnCooldown = 20;
+      var coordFixCooldown = 10;
 
-      var gravityInterval = 60;
+      var gravityInterval = 0;
       var animRunning = 0;
 
   	  function iterate() {
+        timeRemaining--;
+        if(timeRemaining == 0) {
+          init = false;
+          return;
+        }
+        var minutes = Math.floor(timeRemaining / 60 / 60);
+        var seconds = Math.floor(timeRemaining / 60 % 60);
+        if(seconds < 10) {
+          seconds = "0" + seconds;
+        }
+        timeDisplay.text = minutes + ":" + seconds;
         animRunning--;
         if(animRunning > -1) {
           animateBackground();
@@ -283,22 +329,22 @@
             clicked = false;
           }
           gameCoords = checkBounds(game.input.mousePointer.x, game.input.mousePointer.y);
-          if((upKey.isDown || scrollUp) && cooldown < 0) {
+          if((upKey.isDown || scrollUp || wKey.isDown) && cooldown < 0) {
             currentZ += 1;
             cooldown = cooldownTime;
             scrollUp = false;
           }
-          if((downKey.isDown || scrollDown) && cooldown < 0) {
+          if((downKey.isDown || scrollDown || sKey.isDown) && cooldown < 0) {
             currentZ -= 1;
             cooldown = cooldownTime;
             scrollDown = false;
           }
-          if(rightKey.isDown && cooldown < 0) {
+          if((rightKey.isDown || dKey.isDown) && cooldown < 0) {
             animDirection = 1;
             animRunning = 39;
             cooldown = 45;
           }
-          if(leftKey.isDown && cooldown < 0) {
+          if((leftKey.isDown || aKey.isDown) && cooldown < 0) {
             animDirection = -1;
             animRunning = 39;
             cooldown = 45;
@@ -322,6 +368,12 @@
           overlay.y = -resultZ * yDifBottom * 1.41;
           cooldown--;
           if(spawnCooldown == 0) {
+            if(coordFixCooldown < 0) {
+              fixCoords();
+              coordFixCooldown = 10;
+            }
+            coordFixCooldown--;
+            checkStability();
             var valid = false;
             var attempts = 50;
             while(!valid) {
@@ -350,12 +402,13 @@
                 valid = true;
               }
             }
-            spawnCooldown = 100;
+            spawnCooldown = 30;
           }
           spawnCooldown--;
           if(gravityInterval == 0) {
             doGravity();
-            gravityInterval = 5;
+            //fixCoords();
+            gravityInterval = 15;
           }
           gravityInterval--;
         //}
@@ -368,7 +421,7 @@
         if(animRunning == (39/2) - 0.5) {
           rotateObjects();
         }
-        if(animDirection == -1) {
+        if(animDirection == 1) {
           background.animations.frame = animRunning;
         } else {
           background.animations.frame = (39 - animRunning);
@@ -382,7 +435,7 @@
           if(roomItems.children[i] !== undefined && !roomItems.children[i].isQuad && roomItems.children[i].prop.sprite !== undefined) {
             var tempX = 0 + roomItems.children[i].prop.x;
             var tempY = 0 + roomItems.children[i].prop.y;
-            if(animDirection == 1) {
+            if(animDirection == -1) {
               roomItems.children[i].prop.x = 5 - tempY;
               roomItems.children[i].prop.y = tempX;
               roomItems.children[i].prop.rotation = Math.abs((roomItems.children[i].prop.rotation - 1) % 4);
@@ -398,6 +451,17 @@
         }
         for(var c = 0, q = coordQueue.length; c < q; ++c) {
           modifyCoord(coordQueue[c][0], coordQueue[c][1], coordQueue[c][2], coordQueue[c][3], true);
+        }
+      }
+
+      // This is totally a hack.
+      function fixCoords() {
+        var coordQueue = [];
+        initCoords();
+        for(var i = 0, l = roomItems.children.length; i < l; ++i) {
+          if(roomItems.children[i] !== undefined && !roomItems.children[i].isQuad && roomItems.children[i].prop.sprite !== undefined) {
+            modifyCoord(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z, true);
+          }
         }
       }
 
@@ -433,6 +497,63 @@
         }
       }
 
+      //I admit this function is insane. I am sorry.
+      function checkStability() {
+        for(var x = 0; x < 6; ++x) {
+          for(var y = 0; y < 6; ++y) {
+            var instabilityOfColumn = 0;
+            var items = [];
+            for(var z = 0; z < 6; ++z) {
+              var foundZ = false;
+              for(var i = 0, l = roomItems.children.length; i < l && !foundZ; ++i) {
+                if(roomItems.children[i] !== undefined) {
+                  if(roomItems.children[i].isGrid == undefined) {
+                    for(var cub = 0, j = roomItems.children[i].prop.cubes.length; cub < j; ++cub) {
+                      if(roomItems.children[i].prop.x + roomItems.children[i].prop.cubes[cub].x == x
+                      && roomItems.children[i].prop.y + roomItems.children[i].prop.cubes[cub].y == y
+                      && roomItems.children[i].prop.z + roomItems.children[i].prop.cubes[cub].z == z) {
+                        foundZ = true;
+                        items[items.length] = roomItems.children[i];
+                        //items[items.length - 1].indexInArray = i;
+                        z = z - roomItems.children[i].prop.cubes[cub].z;
+                      }
+                    }
+                  }
+                }
+              }
+              if(!foundZ) {
+                z = 7;
+              }
+            }
+            var lessStableItems = [];
+            for(var o = 1, p = items.length; o < p; ++o) {
+              console.log(items[o].prop);
+              console.log(items[o-1].prop);
+              var instability = Math.max(0, items[o].prop.stability - items[o-1].prop.stability);
+              if(instability > 0) {
+                console.log(items[o-1]);
+                lessStableItems[lessStableItems.length] = items[o-1];
+                instabilityOfColumn += instability;
+              }
+              console.log(instabilityOfColumn);
+            }
+            if(instabilityOfColumn >= 4) {
+              for(var c = 0, u = lessStableItems.length; c < u; ++c) {
+                modifyCoord(lessStableItems[c].prop, lessStableItems[c].prop.x, lessStableItems[c].prop.y, lessStableItems[c].prop.z, false);
+                lessStableItems[c].destroy();
+              }
+            } else if(z == 6) {
+              for(var o = 0, p = items.length; o < p; ++o) {
+                modifyCoord(items[o].prop, items[o].prop.x, items[o].prop.y, items[o].prop.z, false);
+                items[o].destroy();
+                score += 20;
+                scoreDisplay.text = "Score: " + score;
+              }
+            }
+          }
+        }
+      }
+
       var heldObject = {};
       var isObjectHeld = false;
 
@@ -447,6 +568,10 @@
                   && roomItems.children[i].prop.z + roomItems.children[i].prop.cubes[cub].z == slatedForDelete[0][2]) {
                     modifyCoord(roomItems.children[i].prop, roomItems.children[i].prop.x, roomItems.children[i].prop.y, roomItems.children[i].prop.z, false);
                     heldObject = roomItems.children[i].prop;
+                    var graphic = game.make.sprite(0,0, heldObject.sprite);
+                    graphic.width = width * 0.07;
+                    graphic.height = (width * 0.07) * heldObject.height;
+                    heldGraphic.add(graphic);
                     isObjectHeld = true;
                     roomItems.children[i].destroy();
                     return;
@@ -511,7 +636,7 @@
           possible_suffixes: [
             '1', '2', '3', '4',
           ],
-          id: 0,
+          stability: 10,
           width: 1,
           height: 1,
         },
@@ -524,7 +649,7 @@
           possible_suffixes: [
             '5', '6', '7', '8',
           ],
-          id: 1,
+          stability: 2,
           width: 1,
           height: 1,
         },
@@ -537,7 +662,7 @@
           possible_suffixes: [
             '9', '10', '11', '12',
           ],
-          id: 2,
+          stability: 8,
           width: 1,
           height: 1,
         },
@@ -550,7 +675,7 @@
           possible_suffixes: [
             '13', '14', '15', '16'
           ],
-          id: 3,
+          stability: 4,
           width: 1,
           height: 1,
         },
@@ -563,7 +688,7 @@
           possible_suffixes: [
             '1', '2', '3', '4'
           ],
-          id: 4,
+          stability: 100,
           width: 1,
           height: 1.5,
         },
@@ -577,7 +702,7 @@
           possible_suffixes: [
             '1', '2', '3', '4'
           ],
-          id: 5,
+          stability: 2,
           width: 1,
           height: 2,
         },
