@@ -1,0 +1,11 @@
+Place objects on top of other objects to build a structure that reaches the rooms ceiling. Be careful however, because if your structure is too unstable, it will collapse before you can reach the top!
+
+Some items will cause you more problems then others. For instance, fridges will destroy everything beneath them, that isn't also a fridge. The rest, you can figure out for yourself.
+
+You can move your selection grid up and down with W and S, Up and Down arrow keys, or with your scroll wheel.
+
+You can rotate your view of the game with A and D, or with Left and Right arrow keys.
+
+You move objects by clicking on a square in the grid to pick up an object, and then click somewhere else to place it. Be careful how you place things though, because the object will be placed with it's lowest point where you click.
+
+For example, if you try to place a 3 high lamp on the top level, it will not work. You would have to move your selection grid down two levels before placing it.

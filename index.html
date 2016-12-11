@@ -1,6 +1,7 @@
 <html>
   <head>
     <link rel="stylesheet" href="cssReset.css">
+    <title>LD37 - Stack Overflow</title>
     <script src="phaser.min.js"></script>
     <style>
 
@@ -15,9 +16,16 @@
       var xDifBottom = yDifBottom * 1.119;
       var yOffsetBottom = 0.932 * height;
       var game = new Phaser.Game(width, height, Phaser.AUTO, '', { preload: preload, create: create, update: update });
+      const remote = require('electron').remote;
+      //const shell = require('electron');//.remote.require('electron');
 
       function preload() {
         game.load.image('IDLogo', './insanedolllogo.png');
+        game.load.image('gameLogo', './Logo.png');
+        game.load.image('Play Button', './buttons/button0.png');
+        game.load.image('Options Button', './buttons/button1.png');
+        game.load.image('Help Button', './buttons/button2.png');
+        game.load.image('Quit Button', './buttons/button3.png');
         game.load.image('Background', './background.png');
         game.load.image('Grid Overlay', './overlayGrid.png');
         game.load.image('Basic Cube 1', './furniture/1x1x1/0/0000.png');
@@ -48,6 +56,7 @@
         game.load.image('Lamp 2', './furniture/1x1x3/6/0001.png');
         game.load.image('Lamp 3', './furniture/1x1x3/6/0002.png');
         game.load.image('Lamp 4', './furniture/1x1x3/6/0003.png');
+        game.load.audio('bgMusic', './BGMusic(TEMP).mp3');
         game.load.atlasJSONHash('rotateBackground', 'rotateAnim.png', 'rotateAnim.json');
       }
 
@@ -68,7 +77,7 @@
       function create() {
         game.input.mouse.capture = true;
         game.stage.backgroundColor = "#0077AA";
-        background = game.add.sprite(0, 0, 'Background');
+        background = game.add.sprite(0, 0, 'rotateBackground');
         background.height = height;
         background.width = height / 9 * 16;
         background.x = -(background.width - width) / 2;
@@ -162,8 +171,18 @@
 
       var cursorCooldown = 5;
 
+      var menu = true;
+
       var score = 0;
       var timeRemaining = 60 * 60 * 2;
+
+      var musicInterval = window.setInterval(function() {
+        timeRemaining--;
+      },1000/60);
+
+      var music;
+
+      var gameLogo;
 
       function runSim() {
         if(!init) {
@@ -175,16 +194,16 @@
             scoreDisplay.destroy();
             timeDisplay.destroy();
             heldGraphic.destroy();
+            background.destroy();
+            background = game.add.sprite(0, 0, 'rotateBackground');
+            background.height = height;
+            background.width = height / 9 * 16;
+            background.x = -(background.width - width) / 2;
           }
-          timeRemaining = 60 * 60 * 2;
+          timeRemaining = 60 * 2;
           score = 0;
           initCoords();
           gameObject = game.add.group();
-          background.destroy();
-          background = game.make.sprite(0, 0, 'rotateBackground');
-          background.height = height;
-          background.width = height / 9 * 16;
-          background.x = -(background.width - width) / 2;
           gameObject.add(background);
           currentHover = drawBottomPiece(0,0);
           gameObject.add(currentHover);
@@ -212,6 +231,60 @@
           timeDisplay.setTextBounds(width * 0.02, height * 0.02, width * 0.96, 0.02 * height);
           makeGrid();
           addBounds();
+          clearInterval(musicInterval);
+          musicInterval = window.setInterval(function() {
+            timeRemaining--;
+          },1000);
+          if(music) {
+            music.stop();
+            music.destroy();
+          }
+          music = game.add.audio('bgMusic');
+          music.play();
+          if(gameLogo != undefined) {
+            gameLogo.destroy();
+            playButton.destroy();
+            helpButton.destroy();
+            bgMenu.destroy();
+            quitButton.destroy();
+          }
+          if(menu) {
+            timeDisplay.alpha = 0;
+            scoreDisplay.alpha = 0;
+            bgMenu = game.add.graphics(0,0);
+            bgMenu.beginFill(0x000000);
+            bgMenu.drawRect(0,0,width, height);
+            bgMenu.endFill();
+            bgMenu.alpha = 0.4;
+            gameLogo = game.add.sprite(0,0, 'gameLogo');
+            gameLogo.width = width / 2;
+            gameLogo.height = (width / 2) / 16 * 4.5;
+            gameLogo.y = (height - ((width) / 16 * 4.5)) / 2;
+            gameLogo.x = width / 4;
+            playButton = game.add.button(0,0, 'Play Button', function() {
+              init = false;
+              menu = false;
+            });
+            playButton.width = width / 8;
+            playButton.height = (width / 8) / 35 * 18;
+            playButton.x = width * 7 / 16;
+            playButton.y = ((height - ((width) / 16 * 5)) / 2) + ((width / 2) / 16 * 4.5);
+            helpButton = game.add.button(0,0, 'Help Button', function() {
+              alert("Place objects on top of other objects to build a structure that reaches the rooms ceiling. Be careful however, because if your structure is too unstable, it will collapse before you can reach the top!\n\nSome items will cause you more problems then others. For instance, fridges will destroy everything beneath them, that isn't also a fridge. The rest, you can figure out for yourself.\n\nYou can move your selection grid up and down with W and S, Up and Down arrow keys, or with your scroll wheel.\n\nYou can rotate your view of the game with A and D, or with Left and Right arrow keys.\n\nYou move objects by clicking on a square in the grid to pick up an object, and then click somewhere else to place it. Be careful how you place things though, because the object will be placed with it's lowest point where you click.\n\nFor example, if you try to place a 3 high lamp on the top level, it will not work. You would have to move your selection grid down two levels before placing it.");
+            });
+            helpButton.width = width / 8;
+            helpButton.height = (width / 8) / 35 * 18;
+            helpButton.x = width * 7 / 16;
+            helpButton.y = (((height - ((width) / 16 * 5)) / 2) + ((width / 2) / 16 * 4.5)) + ((width / 8) / 35 * 20) * 1;
+            quitButton = game.add.button(0,0, 'Quit Button', function() {
+              var currentWindow = remote.getCurrentWindow();
+              currentWindow.close();
+            });
+            quitButton.width = width / 8;
+            quitButton.height = (width / 8) / 35 * 18;
+            quitButton.x = width * 7 / 16;
+            quitButton.y = (((height - ((width) / 16 * 5)) / 2) + ((width / 2) / 16 * 4.5)) + ((width / 8) / 35 * 20) * 2;
+          }
         }
         iterate();
         cursorCooldown--;
@@ -244,7 +317,6 @@
                 dx = Math.abs(bounds[x][y].x + xDifBottom - mouseX);
               }
               dx = (dx / xDifBottom) / 2;
-              console.log(dx);
               if(mouseY > bounds[x][y].y + (yDifBottom * (0.5 - dx))
               && mouseY < bounds[x][y].y + yDifBottom - (yDifBottom * (0.5 - dx))) {
                 if(currentHover) {
@@ -306,15 +378,17 @@
 
       var gravityInterval = 0;
       var animRunning = 0;
+      var gameCoords = [-1,-1];
 
   	  function iterate() {
-        timeRemaining--;
-        if(timeRemaining == 0) {
+        //timeRemaining--;
+        if(timeRemaining == 0 && !menu) {
           init = false;
+          menu = true;
           return;
         }
-        var minutes = Math.floor(timeRemaining / 60 / 60);
-        var seconds = Math.floor(timeRemaining / 60 % 60);
+        var minutes = Math.floor(timeRemaining / 60);
+        var seconds = Math.floor(timeRemaining % 60);
         if(seconds < 10) {
           seconds = "0" + seconds;
         }
@@ -323,40 +397,45 @@
         if(animRunning > -1) {
           animateBackground();
         } //else {
-          if(game.input.activePointer.leftButton.isDown) {
-            clicked = true;
-          } else {
-            clicked = false;
-          }
-          gameCoords = checkBounds(game.input.mousePointer.x, game.input.mousePointer.y);
-          if((upKey.isDown || scrollUp || wKey.isDown) && cooldown < 0) {
-            currentZ += 1;
-            cooldown = cooldownTime;
-            scrollUp = false;
-          }
-          if((downKey.isDown || scrollDown || sKey.isDown) && cooldown < 0) {
-            currentZ -= 1;
-            cooldown = cooldownTime;
-            scrollDown = false;
-          }
-          if((rightKey.isDown || dKey.isDown) && cooldown < 0) {
-            animDirection = 1;
-            animRunning = 39;
-            cooldown = 45;
-          }
-          if((leftKey.isDown || aKey.isDown) && cooldown < 0) {
-            animDirection = -1;
-            animRunning = 39;
-            cooldown = 45;
-          }
-          if(cooldown >= 0) {
-            scrollUp = false;
-            scrollDown = false;
-          }
-          if(currentZ > 5) {
-            currentZ = 5;
-          } else if(currentZ < 0) {
-            currentZ = 0;
+          if(!menu) {
+            if(game.input.activePointer.leftButton.isDown) {
+              clicked = true;
+            } else {
+              clicked = false;
+            }
+            gameCoords = checkBounds(game.input.mousePointer.x, game.input.mousePointer.y);
+            if(gameCoords == undefined) {
+              gameCoords = [-1, -1];
+            }
+            if((upKey.isDown || scrollUp || wKey.isDown) && cooldown < 0) {
+              currentZ += 1;
+              cooldown = cooldownTime;
+              scrollUp = false;
+            }
+            if((downKey.isDown || scrollDown || sKey.isDown) && cooldown < 0) {
+              currentZ -= 1;
+              cooldown = cooldownTime;
+              scrollDown = false;
+            }
+            if((rightKey.isDown || dKey.isDown) && cooldown < 0) {
+              animDirection = 1;
+              animRunning = 39;
+              cooldown = 45;
+            }
+            if((leftKey.isDown || aKey.isDown) && cooldown < 0) {
+              animDirection = -1;
+              animRunning = 39;
+              cooldown = 45;
+            }
+            if(cooldown >= 0) {
+              scrollUp = false;
+              scrollDown = false;
+            }
+            if(currentZ > 5) {
+              currentZ = 5;
+            } else if(currentZ < 0) {
+              currentZ = 0;
+            }
           }
           easedZ.shift();
           easedZ.push(currentZ);
@@ -379,8 +458,6 @@
             while(!valid) {
               var theX = Math.floor(Math.random() * 6);
               var theY = Math.floor(Math.random() * 6);
-              console.log(theX);
-              console.log(theY);
               if(!coords[theX][theY][5]) {
                 var item = spawnRandomItem(theX, theY, 5);
                 if(placementValid(item, theX, theY, 5, false)) {
@@ -417,7 +494,6 @@
 
       function animateBackground() {
         roomItems.y = height * Math.pow(1 - Math.abs((animRunning - (39/2)) / (39/2)), 2);
-        console.log(Math.pow(1 - Math.abs((animRunning - (39/2)) / (39/2)), 2));
         if(animRunning == (39/2) - 0.5) {
           rotateObjects();
         }
@@ -527,15 +603,11 @@
             }
             var lessStableItems = [];
             for(var o = 1, p = items.length; o < p; ++o) {
-              console.log(items[o].prop);
-              console.log(items[o-1].prop);
               var instability = Math.max(0, items[o].prop.stability - items[o-1].prop.stability);
               if(instability > 0) {
-                console.log(items[o-1]);
                 lessStableItems[lessStableItems.length] = items[o-1];
                 instabilityOfColumn += instability;
               }
-              console.log(instabilityOfColumn);
             }
             if(instabilityOfColumn >= 4) {
               for(var c = 0, u = lessStableItems.length; c < u; ++c) {
@@ -549,15 +621,65 @@
                 score += 20;
                 scoreDisplay.text = "Score: " + score;
               }
+              spawnParticles(items[0].prop.x, items[0].prop.y);
             }
           }
+        }
+      }
+
+      var particleLength = 200;
+      var particleSpeed = 10;
+      var particleSize = 2;
+      var particleNum = 280;
+
+      function spawnParticles(x, y) {
+        if(particles == undefined) {
+          particles = game.add.group();
+        }
+        var pointStart = {
+          x: (width / 2) - (xDifBottom * x) + (xDifBottom * y),
+          y: yOffsetBottom - yDifBottom * ((12 - y) / 2) + yDifBottom * (x / 2) + (yDifBottom / 2) + gameObject.y
+        };
+        var endPoint = {
+          x: (width / 2) - (xDifBottom * x) + (xDifBottom * y),
+          y: yOffsetBottom - yDifBottom * ((12 - y) / 2) + yDifBottom * (x / 2) + (yDifBottom / 2) + gameObject.y - (yDifBottom * 1.41 * 5)
+        };
+        for(var i = 0; i < particleNum; ++i) {
+          var theX = pointStart.x;
+          var theY = pointStart.y + ((endPoint.y - pointStart.y) * (i / particleNum));
+          var newParticle = game.make.graphics(0,0);
+          newParticle.lineStyle(particleSize, 0xFF9900);
+          newParticle.moveTo(theX, theY);
+          var randomAngle = Math.random() * 2 * Math.PI * 2;
+          var speed = Math.random() * particleSpeed;
+          newParticle.speedX = Math.sin(randomAngle) * speed;
+          newParticle.speedY = Math.cos(randomAngle) * speed;
+          newParticle.lineTo(theX + newParticle.speedX, theY + newParticle.speedY);
+          newParticle.age = 20;
+          particles.add(newParticle);
         }
       }
 
       var heldObject = {};
       var isObjectHeld = false;
 
+      var particles;
+
       function redrawObjects() {
+        if(particles != undefined) {
+          for(var p = 0, v = particles.children.length; p < v; ++p) {
+            if(particles.children[p] != undefined) {
+              particles.children[p].age--;
+              if(particles.children[p].age > 0) {
+                particles.children[p].x += particles.children[p].speedX;
+                particles.children[p].y += particles.children[p].speedY;
+                particles.children[p].alpha = particles.children[p].age / 20;
+              } else {
+                particles.children[p].destroy();
+              }
+            }
+          }
+        }
         for(var i = 0, l = roomItems.children.length; i < l; ++i) {
           if(roomItems.children[i] !== undefined) {
             if(!roomItems.children[i].isGrid) {
@@ -591,6 +713,21 @@
               roomItems.children[i].tint = (14 * (3 + roomItems.children[i].prop.x + roomItems.children[i].prop.y + roomItems.children[i].prop.z)) * 65536
                                           + (14 * (4 + roomItems.children[i].prop.x + roomItems.children[i].prop.y)) * 256
                                           + (14 * (5 + roomItems.children[i].prop.x + roomItems.children[i].prop.y - roomItems.children[i].prop.z));
+              if(gameCoords[0] == -1) {
+                roomItems.children[i].alpha = 1;
+              } else {
+                var distanceFromCursor = Math.pow(Math.pow(roomItems.children[i].prop.z - currentZ, 2)
+                    + Math.pow(roomItems.children[i].prop.x - gameCoords[0], 2)
+                    + Math.pow(roomItems.children[i].prop.y - gameCoords[1], 2), 1/4);
+                if(distanceFromCursor == 0) {
+                  roomItems.children[i].alpha = 1;
+                } else {
+                  roomItems.children[i].alpha = 1 / distanceFromCursor;
+                }
+                if(roomItems.children[i].prop.x == gameCoords[0] && roomItems.children[i].prop.y == gameCoords[1]) {
+                  roomItems.children[i].tint = 0xFFFFFF;
+                }
+              }
             } else {
               roomItems.children[i].z = roomItems.children[i].gameX + roomItems.children[i].gameY - ((6 - currentZ) / 19);
               roomItems.children[i].y = -resultZ * yDifBottom * 1.41;

@@ -1,0 +1,12 @@
+Adobe After Effects v14.0.1 Windows 64 render log for project “Graphics.aep”
+
+Rendering started on 12/12/2016 at 9:14:49 AM
+
+  12/12/2016 9:14:49 AM: Starting composition “Comp 7”.
+
+  Output To: C:\Users\Pentz\Documents\Front.avi    12/12/2016 9:14:50 AM: Finished composition “Comp 7”.
+
+
+  Total Time Elapsed: 1 Seconds
+Log closed on 12/12/2016 at 9:14:50 AM
+
