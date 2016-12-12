@@ -1,5 +1,5 @@
 {
-  "name"    : "LD37 - Stack Overflow",
+  "name"    : "ld37-stack-overflow",
   "version" : "0.1.0",
   "main"    : "main.js"
 }

@@ -33,7 +33,7 @@ function createWindow () {
       slashes: true
     }));
 
-    win.webContents.openDevTools({'mode': 'detach'});
+    //win.webContents.openDevTools({'mode': 'detach'});
 
     win.on('closed', () => {
       win = null

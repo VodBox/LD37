@@ -44,6 +44,10 @@
         game.load.image('Basic Cube 14', './furniture/1x1x1/4/0001.png');
         game.load.image('Basic Cube 15', './furniture/1x1x1/4/0002.png');
         game.load.image('Basic Cube 16', './furniture/1x1x1/4/0003.png');
+        game.load.image('Basic Cube 17', './furniture/1x1x1/7/0000.png');
+        game.load.image('Basic Cube 18', './furniture/1x1x1/7/0001.png');
+        game.load.image('Basic Cube 19', './furniture/1x1x1/7/0002.png');
+        game.load.image('Basic Cube 20', './furniture/1x1x1/7/0003.png');
         game.load.image('Wider Table 1', './furniture/2x1x1/1/0000.png');
         game.load.image('Wider Table 2', './furniture/1x2x1/1/0001.png');
         game.load.image('Wider Table 3', './furniture/2x1x1/1/0002.png');
@@ -57,6 +61,7 @@
         game.load.image('Lamp 3', './furniture/1x1x3/6/0002.png');
         game.load.image('Lamp 4', './furniture/1x1x3/6/0003.png');
         game.load.audio('bgMusic', './BGMusic(TEMP).mp3');
+        game.load.audio('clear', './ClearSound.mp3');
         game.load.atlasJSONHash('rotateBackground', 'rotateAnim.png', 'rotateAnim.json');
       }
 
@@ -201,7 +206,6 @@
             background.x = -(background.width - width) / 2;
           }
           timeRemaining = 60 * 2;
-          score = 0;
           initCoords();
           gameObject = game.add.group();
           gameObject.add(background);
@@ -240,6 +244,7 @@
             music.destroy();
           }
           music = game.add.audio('bgMusic');
+          music.volume = 0.5;
           music.play();
           if(gameLogo != undefined) {
             gameLogo.destroy();
@@ -284,6 +289,10 @@
             quitButton.height = (width / 8) / 35 * 18;
             quitButton.x = width * 7 / 16;
             quitButton.y = (((height - ((width) / 16 * 5)) / 2) + ((width / 2) / 16 * 4.5)) + ((width / 8) / 35 * 20) * 2;
+            scoreDisplay.alpha = 1;
+            scoreDisplay.text = "Score: " + score;
+          } else {
+            score = 0;
           }
         }
         iterate();
@@ -324,7 +333,7 @@
                 }
                 currentHover = drawBottomPiece(x,y);
                 if(clicked && cursorCooldown < 0) {
-                  cursorCooldown = 5;
+                  cursorCooldown = 10;
                   if(isObjectHeld) {
                     var zOffset = 0;
                     for(var i = 0, l = heldObject.cubes.length; i < l; ++i) {
@@ -419,12 +428,12 @@
             }
             if((rightKey.isDown || dKey.isDown) && cooldown < 0) {
               animDirection = 1;
-              animRunning = 39;
+              animRunning = 25;
               cooldown = 45;
             }
             if((leftKey.isDown || aKey.isDown) && cooldown < 0) {
               animDirection = -1;
-              animRunning = 39;
+              animRunning = 25;
               cooldown = 45;
             }
             if(cooldown >= 0) {
@@ -493,14 +502,14 @@
   	  }
 
       function animateBackground() {
-        roomItems.y = height * Math.pow(1 - Math.abs((animRunning - (39/2)) / (39/2)), 2);
-        if(animRunning == (39/2) - 0.5) {
+        roomItems.y = height * Math.pow(1 - Math.abs((animRunning - (25/2)) / (25/2)), 2);
+        if(animRunning == (25/2) - 0.5) {
           rotateObjects();
         }
         if(animDirection == 1) {
-          background.animations.frame = animRunning;
+          background.animations.frame = Math.floor(animRunning / 25 * 39);
         } else {
-          background.animations.frame = (39 - animRunning);
+          background.animations.frame = Math.floor((25 - animRunning) / 25 * 39);
         }
       }
 
@@ -618,7 +627,11 @@
               for(var o = 0, p = items.length; o < p; ++o) {
                 modifyCoord(items[o].prop, items[o].prop.x, items[o].prop.y, items[o].prop.z, false);
                 items[o].destroy();
-                score += 20;
+                if(!menu) {
+                  score += 20;
+                  var clearSound = game.add.sound('clear');
+                  clearSound.play();
+                }
                 scoreDisplay.text = "Score: " + score;
               }
               spawnParticles(items[0].prop.x, items[0].prop.y);
@@ -843,12 +856,28 @@
           width: 1,
           height: 2,
         },
+        {
+          cubes: [
+            {x: 0, y: 0, z: 0}//,
+            //{x: 1, y: 0, z: 0}
+          ],
+          sprite_prefix: 'Basic Cube ',
+          possible_suffixes: [
+            '17', '18', '19', '20',
+          ],
+          stability: 3,
+          width: 1,
+          height: 1,
+        }
       ];
 
       function spawnRandomItem(x, y, z) {
         var o = roomItems.length;
         if(Math.random() < 1) {
-          var preset = itemOptions[Math.floor(itemOptions.length * Math.random())];
+          var preset = itemOptions[Math.floor((itemOptions.length - 1) * Math.random())];
+          if(Math.random() > 0.99) {
+            preset = itemOptions[itemOptions.length - 1];
+          }
           var rotation = Math.floor(preset.possible_suffixes.length * Math.random());
           var properties = {
             x: x,
